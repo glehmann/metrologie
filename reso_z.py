@@ -39,8 +39,10 @@ mask = itk.MaskImageFilter.IUS3IUS3IUS3.New(median, selectedLabel)
 proj2D = itk.MaximumProjectionImageFilter.IUS3IUS2.New(mask, ProjectionDimension=1)
 proj1D = itk.MaximumProjectionImageFilter.IUS2IUS2.New(proj2D, ProjectionDimension=0)
 # binarize the image
-th = itk.BinaryThresholdImageFilter.IUS2IUS2.New(proj1D)
+th = itk.BinaryThresholdImageFilter.IUS2IUS2.New(proj1D, InsideValue=1)
 # and count the pixels to get the resolution on the z axis
+labelShape = itk.LabelShapeImageFilter.IUS2.New(th)
+# count the object to display a warning
 label = itk.ConnectedComponentImageFilter.IUS2IUS2.New(th)
 relabel = itk.RelabelComponentImageFilter.IUS2IUS2.New(label)
 
@@ -64,13 +66,16 @@ for f in sys.argv[1:] :
 		proj1D.UpdateLargestPossibleRegion()
 		m, M = itk.range(proj1D)
 		th.SetLowerThreshold( (M-m)/2 )
+		
+		labelShape.UpdateLargestPossibleRegion()
 		relabel.UpdateLargestPossibleRegion()
-		res = relabel.GetSizeOfObjectInPixels(1) * itk.spacing(reader)[2]
+		
+		res = labelShape.GetVolume(1) * itk.spacing(reader)[2]
 		results.append( res )
 		print "%s:\t%i\t%f" % (f, l, res),
 		
 		# there not enough pixels in the objects - display a warning about resolution
-		if relabel.GetSizeOfObjectInPixels(1) < 10 :
+		if labelShape.GetVolume(1) < 10 :
 			print "\t!reso!",
 		
 		# there is more than on object in the image - a problem in the shape of the psf ?
